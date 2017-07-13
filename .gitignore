@@ -1,0 +1,5 @@
+investigators.tsv
+
+*.pyc
+.~lock*
+
