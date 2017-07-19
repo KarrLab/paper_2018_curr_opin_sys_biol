@@ -1,132 +1,253 @@
 #!/usr/bin/env python
 
-""" Fetch author emails from Pubmed
+""" Fetch author emails from Europe PMC
+
+See also the `documentation for the Europe PMC webservice <https://europepmc.org/RestfulWebService#search>`_
 
 :Author: Jonathan Karr <karr@mssm.edu>
-:Date: 2017-07-12
+:Date: 2017-07-19
 :Copyright: 2016, Karr Lab
 :License: MIT
 """
 
-from Bio import Entrez
+import codecs
+import cStringIO
 import csv
 import datetime
-import itertools
+import json
 import math
-import numpy
+import requests
 
-# configure entrez
-Entrez.email = 'karr@mssm.edu'
+EUROPE_PMC_ENDPOINT = 'http://www.ebi.ac.uk/europepmc/webservices/rest/search'
+PAGE_SIZE = 1000  # maximum is 1000
+MAX_PAGES = float('inf')
+
 query = (
-    '(simulation OR ((mathematical OR computational) AND model))'
-    ' AND ("systems biology" OR multi-scale OR multiscale OR "computational neuroscience")'
-    ' AND ("2012/01/01"[Date - Publication] : "2099/12/31"[Date - Publication])'
-    )
-max_results = 10000
+    '('
+    '    (TITLE:"systems biology" OR ABSTRACT:"systems biology" OR KW:"systems biology") OR '
+    '    (TITLE:"computational neuroscience" OR ABSTRACT:"computational neuroscience" OR KW:"Models, Neurological") OR '
+    '    (TITLE:"multiscale modeling" OR ABSTRACT:"multiscale modeling")'
+    ') AND ('
+    '          ('
+    '              (TITLE:model OR ABSTRACT:model OR KW:"Models, Biological") AND '
+    '              (TITLE:MATHEMATICAL OR ABSTRACT:mathematical OR ABSTRACT:computational OR TITLE:computational)'
+    '          ) OR '
+    '    (TITLE:simulation OR ABSTRACT:simulation OR KW:"Computer Simulation")'
+    ')AND ('
+    '    FIRST_PDATE:[2012-01-01 TO 2020-12-31]'
+    ')'
+)
 
 
-def parse_article_metadata(article):
-    medline_article = article['MedlineCitation']['Article']
-    if 'AuthorList' not in medline_article:
-        return []
+class HashableDict(dict):
 
-    author_list = medline_article['AuthorList']
-    if not author_list:
-        return []
+    def __hash__(self):
+        return hash(tuple(sorted(self.items())))
 
-    corresponding_authors = []
-    for author in author_list:
-        affiliation_info = author['AffiliationInfo']
-        if not affiliation_info:
+
+class UnicodeWriter:
+    """
+    A CSV writer which will write rows to CSV file "f",
+    which is encoded in the given encoding.
+    """
+
+    def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
+        # Redirect output to a queue
+        self.queue = cStringIO.StringIO()
+        self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
+        self.stream = f
+        self.encoder = codecs.getincrementalencoder(encoding)()
+
+    def writerow(self, row):
+        self.writer.writerow([s.encode("utf-8") for s in row])
+        # Fetch UTF-8 output from the queue ...
+        data = self.queue.getvalue()
+        data = data.decode("utf-8")
+        # ... and reencode it into the target encoding
+        data = self.encoder.encode(data)
+        # write to the target stream
+        self.stream.write(data)
+        # empty queue
+        self.queue.truncate(0)
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if obj is None:
+        return ''
+    if isinstance(obj, datetime.date):
+        return str(obj)
+    raise TypeError("Type %s not serializable" % type(obj))
+
+
+def get_email(affiliation):
+    if '@' not in affiliation:
+        return None
+
+    for word in reversed(affiliation.split(' ')):
+        if '@' in word:
+            if word[-1] == '.':
+                return word[0:-1]
+            else:
+                return word
+
+
+def merge_investigators(a, b):
+    a['id'].update(b['id'])
+    a['email'].update(b['email'])
+    a['articles'].update(b['articles'])
+    return a
+
+
+article_citation_counts = []
+nextCursorMark = '*'
+page = 0
+
+investigators_by_email = {}
+investigators_by_id = {}
+while True:
+    response = requests.get(EUROPE_PMC_ENDPOINT, params={
+        'query': query,
+        'resulttype': 'core',
+        'format': 'json',
+        'pageSize': PAGE_SIZE,
+        'cursorMark': nextCursorMark,
+    })
+    response.raise_for_status()
+    response_data = response.json()
+
+    page += 1
+    n_pages = int(math.ceil(float(response_data['hitCount']) / float(PAGE_SIZE)))
+    print('Downloading page {} of {} ...'.format(page, n_pages))
+
+    for article in response_data['resultList']['result']:
+        if 'authorList' not in article:
             continue
 
-        affiliation = affiliation_info[0]['Affiliation']
-        affiliation, _, email = affiliation[0:-1].rpartition(' ')
-        if '@' not in email:
+        if 'author' not in article['authorList']:
             continue
 
-        id_list = article['PubmedData']['ArticleIdList']
-        pubmed_id = None
-        for id in id_list:
-            if id.attributes['IdType'] == 'pubmed':
-                pubmed_id = str(id)
+        for author in article['authorList']['author']:
+            if 'authorId' in author:
+                id = HashableDict(type=author['authorId']['type'], value=author['authorId']['value'])
+            else:
+                id = None
 
-        if 'ArticleDate' in medline_article and medline_article['ArticleDate']:
-            tmp = medline_article['ArticleDate'][0]
-            publication_date = datetime.date(int(float(tmp['Year'])), int(float(tmp['Month'])), int(float(tmp['Day'])))
-        else:
-            publication_date = None
+            if 'affiliation' in author:
+                affiliation = author['affiliation']
+                email = get_email(author['affiliation'])
+            else:
+                affiliation = None
+                email = None
 
-        corresponding_authors.append({
-            'first_name': author['ForeName'] if 'ForeName' in author else None,
-            'last_name': author['LastName'] if 'LastName' in author else None,
-            'email': email,
-            'affiliation': affiliation,
-            'pubmed_id': pubmed_id,
-            'publication_date': publication_date,
-            })
+            if not id and not email:
+                continue
 
-    return corresponding_authors
+            first_name = author['firstName'] if 'firstName' in author else None
+            last_name = author['lastName'] if 'lastName' in author else None
 
+            title = article['title']
+            if 'journalInfo' in article and 'journal' in article['journalInfo'] and 'title' in article['journalInfo']['journal']:
+                journal = article['journalInfo']['journal']['title']
+            else:
+                journal = ''
+            year, month, day = article['firstPublicationDate'].split('-')
+            date = datetime.date(int(float(year)), int(float(month)), int(float(day)))
+            doi = article['doi'] if 'doi' in article else None
+            pmid = article['pmid'] if 'pmid' in article else None
+            pmcid = article['pmcid'] if 'pmcid' in article else None
 
-# search PubMed
-search_handle = Entrez.esearch(db='pubmed',
-                               sort='relevance',
-                               retmax=str(max_results),
-                               term=query)
-search_results = Entrez.read(search_handle)
-pubmed_ids = search_results['IdList']
+            citations = article['citedByCount'] if 'citedByCount' in article else math.nan
 
-# fetch publication metadata
-corresponding_authors = []
-chunk_size = 1000
-for i_chunk in range(int(math.ceil(len(pubmed_ids) / chunk_size))):
-    print('Retrieving articles {}..{} of {}'.format(
-        i_chunk * chunk_size + 1,
-        min(len(pubmed_ids), (i_chunk + 1) * chunk_size),
-        len(pubmed_ids)))
+            investigator = {
+                'id': set([id]) if id else set([]),
+                'email': set([email]) if email else set([]),
+                'articles': set([HashableDict(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    id=id,
+                    affiliation=affiliation,
+                    title=title,
+                    journal=journal,
+                    date=date,
+                    doi=doi,
+                    pmid=pmid,
+                    pmcid=pmcid,
+                    citations=citations,
+                )]),
+            }
 
-    fetch_handle = Entrez.efetch(db='pubmed', retmode='xml', id=','.join(
-        pubmed_ids[i_chunk * chunk_size:min(len(pubmed_ids), (i_chunk + 1) * chunk_size)]))
-    article_metadata = Entrez.read(fetch_handle)
+            if email and email in investigators_by_email:
+                investigator = merge_investigators(investigators_by_email[email], investigator)
+            if id and id in investigators_by_id:
+                investigator = merge_investigators(investigators_by_id[id], investigator)
 
-    # extract author info from results
-    for article in article_metadata['PubmedArticle']:
-        corresponding_authors.extend(parse_article_metadata(article))
+            for email in investigator['email']:
+                investigators_by_email[email] = investigator
+            for id in investigator['id']:
+                investigators_by_id[id] = investigator
 
-# group authors by email
+    if page == n_pages or page >= MAX_PAGES:
+        break
+
+    nextCursorMark = response_data['nextCursorMark']
+
+# get list of investigators
 investigators = []
-key = lambda author: author['email'].lower()
-corresponding_authors.sort(key=key)
-for email, articles in itertools.groupby(corresponding_authors, key):
-    sorted_articles = sorted(articles, 
-        key=lambda article: article['publication_date'] if article['publication_date'] else datetime.date(1, 1, 1), 
-        reverse=True)
-    lastest_article = sorted_articles[0]
+for investigator in investigators_by_email.values():
+    if investigator not in investigators:
+        investigators.append(investigator)
+for investigator in investigators_by_id.values():
+    if investigator not in investigators:
+        investigators.append(investigator)
 
-    investigators.append({
-        'first_name': lastest_article['first_name'],
-        'last_name': lastest_article['last_name'],
-        'email': email,
-        'affiliation': lastest_article['affiliation'],
-        'all_affiliations': [article['affiliation'] for article in sorted_articles],
-        'lastest_publication_date': lastest_article['publication_date'],
-        'pubmed_ids': [article['pubmed_id'] for article in sorted_articles],
-        })
 
-# sort investigators by name
-investigators.sort(key=lambda investigator: (investigator['last_name'], investigator['first_name']))
-
-# count number of authors 
-article_count_frequencies = numpy.bincount([len(i['pubmed_ids']) for i in investigators])
-
-print('{:12}  {:17}'.format('No. articles', 'No. investigators'))
-for n_articles, n_investigators in enumerate(article_count_frequencies):
-    print('{:12}  {:17}'.format(n_articles, n_investigators))
+def key_func(investigator):
+    latest_article = sorted(investigator['articles'], key=lambda article: article['date'], reverse=True)[0]
+    return (latest_article['last_name'], latest_article['first_name'])
+investigators.sort(key=key_func)
 
 # save author information to a tsv file
 with open('investigators.tsv', 'w') as file:
-    csv_writer = csv.DictWriter(file, delimiter='\t', fieldnames=investigators[0].keys())
-    csv_writer.writeheader()
+    csv_writer = UnicodeWriter(file, delimiter='\t')
+    csv_writer.writerow([
+        'Last name', 'First name', 'Email', 'All emails', 'All IDs',
+        'Affiliation', 'All affiliations',
+        'Lastest article title', 'Lastest article journal', 'Lastest article date',
+        'Lastest article DOI', 'Lastest article PMID', 'Lastest article PMCID',
+        'Number articles', 'Articles', 'Citations',
+    ])
     for investigator in investigators:
-        csv_writer.writerow(investigator)
+        if not investigator['email']:
+            continue
+        latest_article = sorted(investigator['articles'], key=lambda article: article['date'], reverse=True)[0]
+
+        latest_email = sorted(filter(lambda article: article['email'] is not None, investigator['articles']), key=lambda article: article['date'], reverse=True)[0]['email']
+
+        csv_writer.writerow([
+            latest_article['last_name'] or '',
+            latest_article['first_name'] or '',
+            latest_email or '',
+            json.dumps(list(investigator['email'])) or '',
+            json.dumps(list(investigator['id'])) or '',
+            latest_article['affiliation'] or '',
+            json.dumps(list(set([article['affiliation'] for article in investigator['articles']]))) or '',
+            latest_article['title'] or '',
+            latest_article['journal'] or '',
+            str(latest_article['date']) or '',
+            latest_article['doi'] or '',
+            latest_article['pmid'] or '',
+            latest_article['pmcid'] or '',
+            str(len(investigator['articles'])),
+            json.dumps(list(investigator['articles']), default=json_serial) or '',
+            str(sum(filter(lambda citations: not math.isnan(citations), [article['citations'] for article in investigator['articles']]))),
+        ])
+
+# print status message
+print('Done!')

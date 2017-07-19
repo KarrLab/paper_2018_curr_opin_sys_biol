@@ -1,5 +1,6 @@
 """ Fetch author emails from Pubmed
-:Author: Jonathan Karr <karr@mssm.edu> & Balazs Szigeti
+:Author: Jonathan Karr <karr@mssm.edu>
+:Author: Balazs Szigeti <balazs.szigeti@mssm.edu>
 :Date: 2017-07-12
 :Copyright: 2016, Karr Lab
 :License: MIT
