@@ -21,9 +21,19 @@ import six
 
 EUROPE_PMC_ENDPOINT = 'http://www.ebi.ac.uk/europepmc/webservices/rest/search'
 PAGE_SIZE = 1000 # maximum is 1000
-MAX_PAGES = float('inf')
+MAX_PAGES = 25 #float('inf')
 
 query = (
+    '('
+    '   ((TITLE:"cell biology" OR ABSTRACT:"cell biology" OR KW:"Cell biology") OR '
+    '    (TITLE:"systems biology" OR ABSTRACT:"systems biology" OR KW:"systems biology")) AND '
+    '    (TITLE:"computational biology" OR ABSTRACT:"computational biology" OR KW:"computational biology") AND '
+    '   ((TITLE:"simulation" OR ABSTRACT:"simulation" OR KW:"Computer Simulation") OR '
+    '    (TITLE:"model" OR ABSTRACT:"model")) '
+    ')'
+)
+
+""" ORIGINAL QUERY
     '('
     '    (TITLE:"systems biology" OR ABSTRACT:"systems biology" OR KW:"systems biology") OR '
     '    (TITLE:"computational neuroscience" OR ABSTRACT:"computational neuroscience" OR KW:"Models, Neurological") OR '
@@ -38,13 +48,12 @@ query = (
     '    FIRST_PDATE:[2012-01-01 TO 2020-12-31]'
     ')'
 )
-
+"""
 
 class HashableDict(dict):
 
     def __hash__(self):
         return hash(tuple(sorted(self.items())))
-
 
 class UnicodeWriter:
     """
@@ -75,7 +84,6 @@ class UnicodeWriter:
         for row in rows:
             self.writerow(row)
 
-
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
 
@@ -84,7 +92,6 @@ def json_serial(obj):
     if isinstance(obj, datetime.date):
         return str(obj)
     raise TypeError("Type %s not serializable" % type(obj))
-
 
 def get_email(affiliation):
     if '@' not in affiliation:
@@ -97,13 +104,11 @@ def get_email(affiliation):
             else:
                 return word
 
-
 def merge_investigators(a, b):
     a['id'].update(b['id'])
     a['email'].update(b['email'])
     a['articles'].update(b['articles'])
     return a
-
 
 article_citation_counts = []
 nextCursorMark = '*'
@@ -111,6 +116,7 @@ page = 0
 
 investigators_by_email = {}
 investigators_by_id = {}
+
 while True:
     response = requests.get(EUROPE_PMC_ENDPOINT, params={
         'query': query,
@@ -134,6 +140,7 @@ while True:
             continue
 
         for author in article['authorList']['author']:
+
             if 'authorId' in author:
                 id = HashableDict(type=author['authorId']['type'], value=author['authorId']['value'])
             else:
@@ -162,25 +169,24 @@ while True:
             doi = article['doi'] if 'doi' in article else None
             pmid = article['pmid'] if 'pmid' in article else None
             pmcid = article['pmcid'] if 'pmcid' in article else None
-
             citations = article['citedByCount'] if 'citedByCount' in article else math.nan
 
             investigator = {
                 'id': set([id]) if id else set([]),
                 'email': set([email]) if email else set([]),
                 'articles': set([HashableDict(
-                    first_name=first_name,
                     last_name=last_name,
+                    first_name=first_name,
+                    citations=citations,
                     email=email,
                     id=id,
-                    affiliation=affiliation,
+                    #affiliation=affiliation,
                     title=title,
-                    journal=journal,
+                    #journal=journal,
                     date=date,
-                    doi=doi,
-                    pmid=pmid,
-                    pmcid=pmcid,
-                    citations=citations,
+                    #doi=doi,
+                    #pmid=pmid,
+                    #pmcid=pmcid,
                 )]),
             }
 
@@ -208,11 +214,20 @@ for investigator in investigators_by_id.values():
     if investigator not in investigators:
         investigators.append(investigator)
 
+#def key_func(investigator):
+    #latest_article = sorted(investigator['articles'], key=lambda article: article['date'], reverse=True)[0]
+    #return (latest_article['last_name'], latest_article['first_name'])
+
+#investigators.sort(key=key_func)
 
 def key_func(investigator):
-    latest_article = sorted(investigator['articles'], key=lambda article: article['date'], reverse=True)[0]
-    return (latest_article['last_name'], latest_article['first_name'])
-investigators.sort(key=key_func)
+    citations = 0
+    for article in investigator['articles']:
+        if not math.isnan(article['citations']):
+            citations += article['citations']
+    return citations
+
+investigators.sort(key=key_func, reverse=True)
 
 # save author information to a tsv file
 with open('investigators.tsv', 'w') as file:
@@ -220,37 +235,37 @@ with open('investigators.tsv', 'w') as file:
         csv_writer = UnicodeWriter(file, delimiter='\t')
     else:
         csv_writer = csv.writer(file, delimiter='\t')
-    csv_writer.writerow([
-        'Last name', 'First name', 'Email', 'All emails', 'All IDs',
-        'Affiliation', 'All affiliations',
-        'Lastest article title', 'Lastest article journal', 'Lastest article date',
-        'Lastest article DOI', 'Lastest article PMID', 'Lastest article PMCID',
-        'Number articles', 'Articles', 'Citations',
-    ])
+        csv_writer.writerow(['Last name', 'First name', 'Citations', 'Number articles', 'Email', 'All emails', 'All IDs', 'Lastest article date'])
+
+        #'Last name', 'First name', 'Citations', 'Number articles', 'Email', 'All emails', 'All IDs', 'Affiliation', 'All affiliations', 'Lastest article title',
+        #'Lastest article journal', 'Lastest article date',
+        #'Lastest article DOI', 'Lastest article PMID', 'Lastest article PMCID',
+        #'Articles',
+
     for investigator in investigators:
         if not investigator['email']:
             continue
-        latest_article = sorted(investigator['articles'], key=lambda article: article['date'], reverse=True)[0]
 
-        latest_email = sorted(filter(lambda article: article['email'] is not None, investigator['articles']), key=lambda article: article['date'], reverse=True)[0]['email']
+        latest_article = sorted(investigator['articles'], key=lambda article: article['date'], reverse=True)[0]
+        latest_email   = sorted(filter(lambda article: article['email'] is not None, investigator['articles']), key=lambda article: article['date'], reverse=True)[0]['email']
 
         csv_writer.writerow([
             latest_article['last_name'] or '',
             latest_article['first_name'] or '',
+            str(sum(filter(lambda citations: not math.isnan(citations), [article['citations'] for article in investigator['articles']]))),
+            #json.dumps(list(investigator['articles']), default=json_serial) or '',
+            str(len(investigator['articles'])),
             latest_email or '',
             json.dumps(list(investigator['email'])) or '',
             json.dumps(list(investigator['id'])) or '',
-            latest_article['affiliation'] or '',
-            json.dumps(list(set([article['affiliation'] for article in investigator['articles']]))) or '',
-            latest_article['title'] or '',
-            latest_article['journal'] or '',
+            #latest_article['affiliation'] or '',
+            #json.dumps(list(set([article['affiliation'] for article in investigator['articles']]))) or '',
+            #latest_article['journal'] or '',
             str(latest_article['date']) or '',
-            latest_article['doi'] or '',
-            latest_article['pmid'] or '',
-            latest_article['pmcid'] or '',
-            str(len(investigator['articles'])),
-            json.dumps(list(investigator['articles']), default=json_serial) or '',
-            str(sum(filter(lambda citations: not math.isnan(citations), [article['citations'] for article in investigator['articles']]))),
+            latest_article['title'] or '',
+            #latest_article['doi'] or '',
+            #latest_article['pmid'] or '',
+            #latest_article['pmcid'] or '',
         ])
 
 # print status message
