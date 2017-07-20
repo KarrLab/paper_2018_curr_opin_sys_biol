@@ -1,4 +1,4 @@
-# paper_2018_curr_opin_biotechnol
+# Code for the Karr Lab's 2018 review in *Current Opinion in Systems Biology*
 This repository provides the code used to generate the email list used for the biomodeling community survey reported in the Karr Lab's 2018 whole-cell modeling review in *Current Opinion in Systems Biology*. 
 
 The code performs the following functions:
