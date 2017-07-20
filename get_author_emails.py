@@ -23,32 +23,8 @@ EUROPE_PMC_ENDPOINT = 'http://www.ebi.ac.uk/europepmc/webservices/rest/search'
 PAGE_SIZE = 1000 # maximum is 1000
 MAX_PAGES = 25 #float('inf')
 
-query = (
-    '('
-    '   ((TITLE:"cell biology" OR ABSTRACT:"cell biology" OR KW:"Cell biology") OR '
-    '    (TITLE:"systems biology" OR ABSTRACT:"systems biology" OR KW:"systems biology")) AND '
-    '    (TITLE:"computational biology" OR ABSTRACT:"computational biology" OR KW:"computational biology") AND '
-    '   ((TITLE:"simulation" OR ABSTRACT:"simulation" OR KW:"Computer Simulation") OR '
-    '    (TITLE:"model" OR ABSTRACT:"model")) '
-    ')'
-)
-
-""" ORIGINAL QUERY
-    '('
-    '    (TITLE:"systems biology" OR ABSTRACT:"systems biology" OR KW:"systems biology") OR '
-    '    (TITLE:"computational neuroscience" OR ABSTRACT:"computational neuroscience" OR KW:"Models, Neurological") OR '
-    '    (TITLE:"multiscale modeling" OR ABSTRACT:"multiscale modeling")'
-    ') AND ('
-    '          ('
-    '              (TITLE:model OR ABSTRACT:model OR KW:"Models, Biological") AND '
-    '              (TITLE:MATHEMATICAL OR ABSTRACT:mathematical OR ABSTRACT:computational OR TITLE:computational)'
-    '          ) OR '
-    '    (TITLE:simulation OR ABSTRACT:simulation OR KW:"Computer Simulation")'
-    ')AND ('
-    '    FIRST_PDATE:[2012-01-01 TO 2020-12-31]'
-    ')'
-)
-"""
+with open('query.txt', 'r') as file:
+    query = file.read()
 
 class HashableDict(dict):
 

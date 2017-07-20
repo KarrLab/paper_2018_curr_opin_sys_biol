@@ -1,0 +1,16 @@
+(
+   ((TITLE:"cell biology" OR ABSTRACT:"cell biology" OR KW:"Cell biology") OR 
+    (TITLE:"systems biology" OR ABSTRACT:"systems biology" OR KW:"systems biology") OR 
+    (TITLE:"computational neuroscience" OR ABSTRACT:"computational neuroscience") OR
+    (TITLE:"multiscale" OR ABSTRACT:"multiscale") OR
+    (TITLE:"agent-based" OR ABSTRACT:"agent-based") OR 
+    (TITLE:"rule-based" OR ABSTRACT:"rule-based") OR 
+    (TITLE:"flux balance" OR ABSTRACT:"flux balance" OR TITLE:"FBA" OR ABSTRACT:"FBA") OR 
+    (TITLE:"differential equation" OR ABSTRACT:"differential equation" OR TITLE:"ODE" OR ABSTRACT:"ODE" OR TITLE:"PDE" OR ABSTRACT:"PDE") OR 
+    (TITLE:"Gillespie" OR ABSTRACT:"Gillespie" OR TITLE:"SSA" OR ABSTRACT:"SSA") OR
+    (TITLE:"logical" OR ABSTRACT:"logical" OR TITLE:"Boolean" OR ABSTRACT:"Boolean")
+    ) AND 
+    (TITLE:"computational" OR ABSTRACT:"computational" OR KW:"computational biology" OR TITLE:"mathematical" OR ABSTRACT:"mathematical") AND 
+   ((TITLE:"simulation" OR ABSTRACT:"simulation" OR KW:"Computer Simulation") OR 
+    (TITLE:"model" OR ABSTRACT:"model")) 
+)
