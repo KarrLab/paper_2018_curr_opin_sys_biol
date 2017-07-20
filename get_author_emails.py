@@ -20,8 +20,8 @@ import requests
 import six
 
 EUROPE_PMC_ENDPOINT = 'http://www.ebi.ac.uk/europepmc/webservices/rest/search'
-PAGE_SIZE = 10  # maximum is 1000
-MAX_PAGES = 2#float('inf')
+PAGE_SIZE = 1000 # maximum is 1000
+MAX_PAGES = float('inf')
 
 query = (
     '('
