@@ -10,17 +10,18 @@ See also the `documentation for the Europe PMC webservice <https://europepmc.org
 :License: MIT
 """
 
+from six import StringIO
 import codecs
-import cStringIO
 import csv
 import datetime
 import json
 import math
 import requests
+import six
 
 EUROPE_PMC_ENDPOINT = 'http://www.ebi.ac.uk/europepmc/webservices/rest/search'
-PAGE_SIZE = 1000  # maximum is 1000
-MAX_PAGES = float('inf')
+PAGE_SIZE = 10  # maximum is 1000
+MAX_PAGES = 2#float('inf')
 
 query = (
     '('
@@ -53,7 +54,7 @@ class UnicodeWriter:
 
     def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
         # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
+        self.queue = StringIO()
         self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
         self.stream = f
         self.encoder = codecs.getincrementalencoder(encoding)()
@@ -215,7 +216,10 @@ investigators.sort(key=key_func)
 
 # save author information to a tsv file
 with open('investigators.tsv', 'w') as file:
-    csv_writer = UnicodeWriter(file, delimiter='\t')
+    if six.PY2:
+        csv_writer = UnicodeWriter(file, delimiter='\t')
+    else:
+        csv_writer = csv.writer(file, delimiter='\t')
     csv_writer.writerow([
         'Last name', 'First name', 'Email', 'All emails', 'All IDs',
         'Affiliation', 'All affiliations',
