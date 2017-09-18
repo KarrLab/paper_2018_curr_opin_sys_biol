@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-
 """ Fetch author emails from Europe PMC
 
 See also the `documentation for the Europe PMC webservice <https://europepmc.org/RestfulWebService#search>`_
 
 :Author: Jonathan Karr <karr@mssm.edu>
 :Date: 2017-07-19
-:Copyright: 2016, Karr Lab
+:Copyright: 2017, Karr Lab
 :License: MIT
 """
 
