@@ -31,7 +31,7 @@ if not os.path.isdir(OUT_DIR):
 #################################
 # read invitations list
 #################################
-rows = pyexcel_xlsx.get_data(invitations_filename)['MASTER_emails']
+rows = pyexcel_xlsx.get_data(invitations_filename)['Invitations']
 invitations = []
 for row in rows[1:]:
     invitation = {}
