@@ -60,7 +60,7 @@ for row in rows[1:]:
 # read survey responses
 #################################
 # todo
-rows = pyexcel_xlsx.get_data(responses_filename)['Survey responses']
+rows = pyexcel_xlsx.get_data(responses_filename)['Responses']
 responses = []
 for row in rows[1:]:
     response = {
