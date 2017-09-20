@@ -178,11 +178,21 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
         caption = ''
 
     # plot data    
-    bar_height = 0.15
-    fig, axes = pyplot.subplots(nrows=1, ncols=1)
-    fig.set_size_inches(6.5, (len(labels) + 0.1) * bar_height / 0.77)
+    h_bar = 0.15
+    h_axis = 0.35
+    h_fig = (len(labels) + 0.1) * h_bar + h_axis
+
+    w_fig = 6.5
+    w_axis = 1.68
+    w_label = 0.30
+    w_grid = w_fig - w_axis - w_label
+
+    fig = pyplot.figure()
+    fig.set_size_inches(w_fig, h_fig)
     fig.set_dpi(300.)
     fig.set_frameon(False)
+    axes = fig.add_axes((w_axis / w_fig, h_axis / h_fig, w_grid / w_fig, 1 - h_axis / h_fig))
+
     y = numpy.arange(len(labels))
     axes.barh(y, counts, left=0, tick_label=labels, height=0.9, color='black')
     axes.set_xlim([0, numpy.max(counts)])
@@ -196,12 +206,9 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
     axes.set_xlabel(x_label, fontsize=9, fontname='Arial')
     axes.set_ylabel(y_label, fontsize=9, fontname='Arial')
 
-    if y_label == 'Country':
-        exit()
-
     for label, count, rect in zip(labels, counts, axes.patches):
         width = rect.get_width()
-        axes.text(rect.get_x() + rect.get_width() + 1, rect.get_y() + rect.get_height() / 2, 
+        axes.text(rect.get_x() + rect.get_width() + 0.02 / w_grid * numpy.max(counts), rect.get_y() + rect.get_height() / 2, 
             '{:.1f}%'.format(float(count) / float(total) * 100.), ha='left', va='center', fontsize=7, fontname='Arial')
 
     axes.spines['top'].set_visible(False)
@@ -209,7 +216,7 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
 
     # save figure
     with backend_pdf.PdfPages(os.path.join(OUT_DIR, filename + '.pdf')) as pp:
-        pp.savefig(fig, transparent=True, bbox_inches='tight', pad_inches=0.)
+        pp.savefig(fig, transparent=True)
 
     pyplot.close(fig)
 
