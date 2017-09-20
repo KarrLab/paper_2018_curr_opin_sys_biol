@@ -428,13 +428,13 @@ for i_figure, figure in enumerate(figures):
         groups = group_invitations(invitations, figure['key'], unknown=figure['unknown'])
         total = len(invitations)
         x_axis_label = 'Number of invited scientists'
-        filename = '{} - Invitations by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
+        filename = 'Figure S{} - Invitations by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
 
     else:
         groups = group_responses(responses, figure['key'], unknown=figure['unknown'])
         total = len(responses)
         x_axis_label = 'Number of responses'
-        filename = '{} - Responses by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
+        filename = 'Figure S{} - Responses by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
 
     figure['filename'] = filename
     figure['caption'] = plot_histogram(groups, total, x_axis_label,
@@ -443,7 +443,7 @@ for i_figure, figure in enumerate(figures):
                                        threshold_count=figure['threshold_count'])
 
 # print figures
-with open(os.path.join(OUT_DIR, 'figures.tex'), 'w') as file:
+with open(os.path.join(OUT_DIR, 'Figures S1-S22.tex'), 'w') as file:
     for figure in figures:
         file.write('\clearpage\n\suppfig{{{}}}{{{}}}{{{}}}{{{}}}\n\n'.format(
             figure['filename'],
