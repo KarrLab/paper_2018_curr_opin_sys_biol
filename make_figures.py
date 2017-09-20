@@ -183,7 +183,7 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
     h_fig = (len(labels) + 0.1) * h_bar + h_axis
 
     w_fig = 6.5
-    w_axis = 1.68
+    w_axis = 1.49
     w_label = 0.30
     w_grid = w_fig - w_axis - w_label
 
@@ -204,7 +204,7 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
         tick.label.set_fontsize(7)
         tick.label.set_fontname('Arial')
     axes.set_xlabel(x_label, fontsize=9, fontname='Arial')
-    axes.set_ylabel(y_label, fontsize=9, fontname='Arial')
+    # axes.set_ylabel(y_label, fontsize=9, fontname='Arial')
 
     for label, count, rect in zip(labels, counts, axes.patches):
         width = rect.get_width()
