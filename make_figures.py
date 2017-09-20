@@ -9,6 +9,8 @@
 from matplotlib import pyplot
 from matplotlib.backends import backend_pdf
 import itertools
+import matplotlib
+import natsort
 import numpy
 import os
 import pyexcel_xlsx
@@ -27,7 +29,7 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), 'figures')
 #################################
 if not os.path.isdir(OUT_DIR):
     os.makedirs(OUT_DIR)
-    
+
 #################################
 # read invitations list
 #################################
@@ -43,131 +45,401 @@ for row in rows[1:]:
     invitation['sector'] = row[5]
     invitation['country'] = row[6]
     invitation['invitation_date'] = row[7]
-    
-    if len(row) >= 9:    
+
+    if len(row) >= 9:
         invitation['bounced'] = row[8] == 'Y'
     else:
         invitation['bounced'] = False
-    
+
     if len(row) >= 10:
         invitation['responded'] = row[9] == 'Y'
     else:
         invitation['responded'] = False
-    
+
     invitations.append(invitation)
 
 #################################
 # read survey responses
 #################################
-# todo
+
+
+def parse_list(row, col):
+    if len(row) > col:
+        str = row[col]
+    else:
+        return []
+
+    if str:
+        return str.split(';')
+    return []
+
 rows = pyexcel_xlsx.get_data(responses_filename)['Responses']
 responses = []
-for row in rows[1:]:
+for row in rows[2:]:
+    if row[25] == 'Y':
+        continue
+
     response = {
-        'exclude': row[25],
-        'fields': row[26].split(';'),
-        'subfield': row[27].split(';'),
-        'bio_focus': row[28].split(';'),
-        'model_size': row[29].split(';'),
-        'data_types': row[30].split(';'),
-        'data_sources': row[31].split(';'),
-        'formalisms': row[32].split(';'),
-        'tools': row[33].split(';'),
-        'model_formats': row[34].split(';'),
-        'repositories': row[35].split(';'),
-        'programming_languages': row[36].split(';'),
-        'other_tools': row[37].split(';'),
-        'bottlenecks': row[38].split(';'),
-        'key_problems': row[39].split(';'),
-        'key_bottlenecks': row[40].split(';'),
-        'needed_resources': row[41].split(';'),
-        'needed_meetings': row[42].split(';'),
-        'other_thoughts': row[43].split(';'),
-        'sector': row[44],
-        'country': row[45],
+        'sectors': parse_list(row, 26),
+        'fields': parse_list(row, 27),
+        'countries': parse_list(row, 28),
+        'focus': parse_list(row, 29),
+        'bio_focus': parse_list(row, 30),
+        'model_size': parse_list(row, 31),
+        'data_types': parse_list(row, 32),
+        'data_sources': parse_list(row, 33),
+        'formalisms': parse_list(row, 34),
+        'tools': parse_list(row, 35),
+        'model_formats': parse_list(row, 36),
+        'repositories': parse_list(row, 37),
+        'programming_languages': parse_list(row, 38),
+        'other_tools': parse_list(row, 39),
+        'bottlenecks': parse_list(row, 40),
+        'key_bottlenecks': parse_list(row, 41),
+        'key_problems': parse_list(row, 42),
+        'needed_resources': parse_list(row, 43),
+        'needed_meetings': parse_list(row, 44),
+        'other_thoughts': parse_list(row, 45),
     }
     responses.append(response)
-    
-responses = list(filter(lambda r: r['exclude'] != 'Y', responses))
 
 #################################
 # make and save figures
-#################################    
-def plot_histogram(groups, x_label, y_label, filename, sort=True):
-    if sort:
-        groups.sort(key=lambda group: -1 if group['label'] == 'Unknown' else group['count'])
+#################################
+
+
+def group_invitations(invitations, key_name):
+    key = lambda i: i[key_name] or 'Unknown'
+    invitations.sort(key=natsort.natsort_keygen(key, alg=natsort.IGNORECASE))
+
+    groups = []
+    for key, group in itertools.groupby(invitations, key):
+        groups.append({'label': key, 'count': len(list(group))})
+
+    return groups
+
+
+def group_responses(responses, key_name, unknown=True):
+    all_responses = []
+    for response in responses:
+        if response[key_name]:
+            all_responses += response[key_name]
+        elif unknown:
+            all_responses.append('Unknown')
+
+    key = lambda el: el
+    all_responses.sort(key=natsort.natsort_keygen(key, alg=natsort.IGNORECASE))
+    groups = []
+    for key, group in itertools.groupby(all_responses, key):
+        groups.append({'label': key, 'count': len(list(group))})
+
+    return groups
+
+
+def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.):
+    def sort_func(group):
+        if group['label'] == 'Other':
+            return (1, group['label'])
+        elif group['label'] == 'Unknown':
+            return (2, group['label'])
+        else:   
+            return (-1 * float(group['count']), group['label'])
+
+    groups.sort(key=natsort.natsort_keygen(sort_func, alg=natsort.IGNORECASE), reverse=True)
     labels = [group['label'] for group in groups]
-    counts = [group['count'] for group in groups]
-    
-    # plot data
-    fig, axes = pyplot.subplots(nrows=1, ncols=1)    
-    y = numpy.arange(len(groups))
-    axes.barh(y, counts)
+    counts = numpy.array([group['count'] for group in groups])
+
+    filtered_labels = []
+    filtered_counts = []
+    other_count = 0.
+    other_caption = []
+    for label, count in zip(labels, counts):
+        if count >= threshold_count:
+            filtered_labels.append(label)
+            filtered_counts.append(count)
+        else:
+            other_count += count
+            other_caption.append('{} ({})'.format(label, count))
+    labels = filtered_labels
+    counts = filtered_counts
+    if other_count:
+        if len(labels) > 0 and labels[0] == 'Unknown':
+            labels.insert(1, 'Other')
+            counts.insert(1, other_count)
+        else:
+            labels.insert(0, 'Other')
+            counts.insert(0, other_count)
+        other_caption.reverse()
+        if len(other_caption) == 1:        
+            caption = 'Other: ' + other_caption[-1] + '.'
+        else:
+            caption = 'Other: ' + ', '.join(other_caption[0:-1]) + ' and ' + other_caption[-1] + '.'
+    else:
+        caption = ''
+
+    # plot data    
+    bar_height = 0.15
+    fig, axes = pyplot.subplots(nrows=1, ncols=1)
+    fig.set_size_inches(6.5, (len(labels) + 0.1) * bar_height / 0.77)
+    fig.set_dpi(300.)
+    fig.set_frameon(False)
+    y = numpy.arange(len(labels))
+    axes.barh(y, counts, left=0, tick_label=labels, height=0.9, color='black')
     axes.set_xlim([0, numpy.max(counts)])
-    axes.set_ylim([-0.5, len(groups)])
-    axes.set_yticks(y + 0.5)
-    axes.set_yticklabels(labels)    
-    axes.set_xlabel(x_label)
-    axes.set_ylabel(y_label)
-    
-    #todo: label percent
-    #todo: change color
-    #todo: set bar size, page size, font size
-    
+    axes.set_ylim([-0.55, len(labels) - 0.45])
+    for tick in axes.xaxis.get_major_ticks():
+        tick.label.set_fontsize(7)
+        tick.label.set_fontname('Arial')
+    for tick in axes.yaxis.get_major_ticks():
+        tick.label.set_fontsize(7)
+        tick.label.set_fontname('Arial')
+    axes.set_xlabel(x_label, fontsize=9, fontname='Arial')
+    axes.set_ylabel(y_label, fontsize=9, fontname='Arial')
+
+    if y_label == 'Country':
+        exit()
+
+    for label, count, rect in zip(labels, counts, axes.patches):
+        width = rect.get_width()
+        axes.text(rect.get_x() + rect.get_width() + 1, rect.get_y() + rect.get_height() / 2, 
+            '{:.1f}%'.format(float(count) / float(total) * 100.), ha='left', va='center', fontsize=7, fontname='Arial')
+
+    axes.spines['top'].set_visible(False)
+    axes.spines['right'].set_visible(False)
+
     # save figure
-    with backend_pdf.PdfPages(os.path.join(OUT_DIR, filename)) as pp:
+    with backend_pdf.PdfPages(os.path.join(OUT_DIR, filename + '.pdf')) as pp:
         pp.savefig(fig, transparent=True, bbox_inches='tight', pad_inches=0.)
-    pyplot.close(fig)
-    
-def plot_pie(groups, filename):
-    groups.sort(key=lambda group: -1 if group['label'] == 'Unknown' else group['count'])
-    labels = [group['label'] for group in groups]
-    counts = [group['count'] for group in groups]
-    
-    # plot data
-    fig, axes = pyplot.subplots(nrows=1, ncols=1)        
-    explode = numpy.full((len(counts),), 0.01)
-    axes.pie(counts, explode=explode, labels=labels, autopct='%d%%', shadow=False, startangle=90)
-    axes.axis('equal')
-    
-    # save figure
-    with backend_pdf.PdfPages(os.path.join(OUT_DIR, filename)) as pp:
-        pp.savefig(fig, transparent=True, bbox_inches='tight', pad_inches=0.)
+
     pyplot.close(fig)
 
-# invitations by country
-groups = []
-key = lambda i: i['country'] or 'Unknown'
-invitations.sort(key=key)
-for key, group in itertools.groupby(invitations, key):
-    groups.append({'label': key, 'count': len(list(group))})
-plot_histogram(groups, 'Number of researchers', 'Country', 'Invitations by country.pdf')
+    return caption
 
-# invitations by response
-groups = [
-    {'label': 'Yes', 'count': 0}, 
-    {'label': 'No', 'count': 0},
-    ]
-for invitation in invitations:
-    if invitation['responded']:
-        groups[0]['count'] += 1
-    elif not invitation['bounced']:
-        groups[1]['count'] += 1
-plot_histogram(groups, 'Number of researchers', 'Responded to survey', 'Invitations by response.pdf', sort=False)
+figures = [
+    {
+        'data': 'invitations',
+        'title': 'Sectors of the invited scientists.',
+        'short_title': 'Sectors of the invited scientists.',
+        'key': 'sector',
+        'y_axis_label': 'Sector',
+        'threshold_count': 0.,
+        'unknown': True,
+    },
+    {
+        'data': 'invitations',
+        'title': 'Countries of the invited scientists.',
+        'short_title': 'Countries of the invited scientists.',
+        'key': 'country',
+        'y_axis_label': 'Country',
+        'threshold_count': 5.,
+        'unknown': True,
+    },
+    {
+        'data': 'responses',
+        'title': 'What sector do you work in?',
+        'short_title': 'What sector do you work in?',
+        'key': 'sectors',
+        'y_axis_label': 'Sector',
+        'threshold_count': 0.,
+        'unknown': True,
+    },
+    {
+        'data': 'responses',
+        'title': 'What is your research field?',
+        'short_title': 'What is your research field?',
+        'key': 'fields',
+        'y_axis_label': 'Field',
+        'unknown': True,
+        'threshold_count': 3.,
+    },
+    {
+        'data': 'responses',
+        'title': 'Where do you work?',
+        'short_title': 'Where do you work?',
+        'key': 'countries',
+        'y_axis_label': 'Country',
+        'threshold_count': 3.,
+        'unknown': True,
+    },
+    {
+        'data': 'responses',
+        'title': 'What is the primary focus on your research?',
+        'short_title': 'What is the primary focus on your research?',
+        'key': 'focus',
+        'y_axis_label': 'Research focus',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'What is the biological focus of your research?',
+        'short_title': 'What is the biological focus of your research?',
+        'key': 'bio_focus',
+        'y_axis_label': 'Biological focus',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, how large are the models that you typically use in your research?',
+        'short_title': 'How large are the models that you typically use in your research?',
+        'key': 'model_size',
+        'y_axis_label': 'Model size',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, what types of data sources do you use?',
+        'short_title': 'What types of data sources do you use?',
+        'key': 'data_types',
+        'y_axis_label': 'Data type',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, which data sources do you use?',
+        'short_title': 'Which data sources do you use?',
+        'key': 'data_sources',
+        'y_axis_label': 'Data source',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, which mathematical representations and simulation algorithms do you use most frequently?',
+        'short_title': 'Which mathematical representations do you use most frequently?',
+        'key': 'formalisms',
+        'y_axis_label': 'Mathematical formalism',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, which tools do you most frequently use to build and/or simulate models?',
+        'short_title': 'Which tools do you most frequently use to build and/or simulate models?',
+        'key': 'tools',
+        'y_axis_label': 'Tool',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, which languages do you most frequently use to represent models?',
+        'short_title': 'Which languages do you most frequently use to represent models?',
+        'key': 'model_formats',
+        'y_axis_label': 'Model format',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'If you use models in your research, which resources do you most frequently use to distribute models?',
+        'short_title': 'Which resources do you most frequently use to distribute models?',
+        'key': 'repositories',
+        'y_axis_label': 'Resource',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'Which programming languages do you most frequently use in your research?',
+        'short_title': 'Which programming languages do you most frequently use?',
+        'key': 'programming_languages',
+        'y_axis_label': 'Programming language',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'What additional tools do you frequently use in your research?',
+        'short_title': 'What additional tools do you frequently use in your research?',
+        'key': 'other_tools',
+        'y_axis_label': 'Tool',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'What are the most time-consuming aspects of your research?',
+        'short_title': 'What are the most time-consuming aspects of your research?',
+        'key': 'bottlenecks',
+        'y_axis_label': 'Bottleneck',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'What do think are the main bottlenecks to building more predictive models?',
+        'short_title': 'What do think are the main bottlenecks to building more predictive models?',
+        'key': 'key_bottlenecks',
+        'y_axis_label': 'Bottleneck',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'Given access to improved data and tools, what biomedical problems would you like to use models to solve (e.g. designer microorganisms, personalized cancer therapy)?',
+        'short_title': 'What biomedical problems would you like to use models to solve?',
+        'key': 'key_problems',
+        'y_axis_label': 'Problem',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'What additional databases, methods, tools, and/or standards would help accelerate your research?',
+        'short_title': 'What additional resources would help accelerate your research?',
+        'key': 'needed_resources',
+        'y_axis_label': 'Resource',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'What additional meetings, courses, and/or training opportunities would help accelerate your research?',
+        'short_title': 'What additional meetings would help accelerate your research?',
+        'key': 'needed_meetings',
+        'y_axis_label': 'Meeting',
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+    {
+        'data': 'responses',
+        'title': 'Are there any additional thoughts that you would like to share?',
+        'short_title': 'Are there any additional thoughts that you would like to share?',
+        'key': 'other_thoughts',
+        'y_axis_label': 'Other thought',         
+        'threshold_count': 3.,
+        'unknown': False,
+    },
+]
 
-# responses by sector
-groups = []
-key = lambda r: r['sector'] or 'Unknown'
-responses.sort(key=key)
-for key, group in itertools.groupby(invitation_responses, key):
-    groups.append({'label': key, 'count': len(list(group))})
-plot_histogram(groups, 'Number of researchers', 'Sector', 'Responses by sector.pdf')
+for i_figure, figure in enumerate(figures):
+    if figure['data'] == 'invitations':
+        groups = group_invitations(invitations, figure['key'])
+        total = len(invitations)
+        x_axis_label = 'Number of invited scientists'
+        filename = '{} - Invitations by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
 
-# responses by country
-groups = []
-key = lambda r: r['country'] or 'Unknown'
-responses.sort(key=key)
-for key, group in itertools.groupby(responses, key):
-    groups.append({'label': key, 'count': len(list(group))})
-plot_histogram(groups, 'Number of researchers', 'Country', 'Responses by country.pdf')
+    else:
+        groups = group_responses(responses, figure['key'], unknown=figure['unknown'])
+        total = len(responses)
+        x_axis_label = 'Number of responses'
+        filename = '{} - Responses by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
 
+    figure['filename'] = filename
+    figure['caption'] = plot_histogram(groups, total, x_axis_label,
+                                       figure['y_axis_label'], filename,
+                                       threshold_count=figure['threshold_count'])
+
+# print figures
+with open(os.path.join(OUT_DIR, 'figures.tex'), 'w') as file:
+    for figure in figures:
+        file.write('\clearpage\n\suppfig{{{}}}{{{}}}{{{}}}{{{}}}\n\n'.format(
+            figure['filename'],
+            figure['title'],
+            figure['short_title'],
+            figure['caption'].replace('&', '\&').replace('#', '\#').replace('%', '\%'),
+        ))
