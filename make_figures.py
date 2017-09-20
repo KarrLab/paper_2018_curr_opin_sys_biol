@@ -108,8 +108,8 @@ for row in rows[2:]:
 #################################
 
 
-def group_invitations(invitations, key_name):
-    key = lambda i: i[key_name] or 'Unknown'
+def group_invitations(invitations, key_name, unknown='Unknown'):
+    key = lambda i: i[key_name] or unknown
     invitations.sort(key=natsort.natsort_keygen(key, alg=natsort.IGNORECASE))
 
     groups = []
@@ -119,13 +119,13 @@ def group_invitations(invitations, key_name):
     return groups
 
 
-def group_responses(responses, key_name, unknown=True):
+def group_responses(responses, key_name, unknown='Unknown'):
     all_responses = []
     for response in responses:
         if response[key_name]:
             all_responses += response[key_name]
         elif unknown:
-            all_responses.append('Unknown')
+            all_responses.append(unknown)
 
     key = lambda el: el
     all_responses.sort(key=natsort.natsort_keygen(key, alg=natsort.IGNORECASE))
@@ -136,11 +136,11 @@ def group_responses(responses, key_name, unknown=True):
     return groups
 
 
-def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.):
+def plot_histogram(groups, total, x_label, y_label, filename, unknown='Unknown', threshold_count=1.):
     def sort_func(group):
         if group['label'] == 'Other':
             return (1, group['label'])
-        elif group['label'] == 'Unknown':
+        elif group['label'] == unknown:
             return (2, group['label'])
         else:   
             return (-1 * float(group['count']), group['label'])
@@ -163,7 +163,7 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
     labels = filtered_labels
     counts = filtered_counts
     if other_count:
-        if len(labels) > 0 and labels[0] == 'Unknown':
+        if len(labels) > 0 and labels[0] == unknown:
             labels.insert(1, 'Other')
             counts.insert(1, other_count)
         else:
@@ -230,7 +230,7 @@ figures = [
         'key': 'sector',
         'y_axis_label': 'Sector',
         'threshold_count': 0.,
-        'unknown': True,
+        'unknown': 'Unknown',
     },
     {
         'data': 'invitations',
@@ -239,7 +239,7 @@ figures = [
         'key': 'country',
         'y_axis_label': 'Country',
         'threshold_count': 5.,
-        'unknown': True,
+        'unknown': 'Unknown',
     },
     {
         'data': 'responses',
@@ -248,7 +248,7 @@ figures = [
         'key': 'sectors',
         'y_axis_label': 'Sector',
         'threshold_count': 0.,
-        'unknown': True,
+        'unknown': 'Unreported',
     },
     {
         'data': 'responses',
@@ -256,7 +256,7 @@ figures = [
         'short_title': 'What is your research field?',
         'key': 'fields',
         'y_axis_label': 'Field',
-        'unknown': True,
+        'unknown': 'Unreported',
         'threshold_count': 3.,
     },
     {
@@ -266,7 +266,7 @@ figures = [
         'key': 'countries',
         'y_axis_label': 'Country',
         'threshold_count': 3.,
-        'unknown': True,
+        'unknown': 'Unreported',
     },
     {
         'data': 'responses',
@@ -275,7 +275,7 @@ figures = [
         'key': 'focus',
         'y_axis_label': 'Research focus',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -284,7 +284,7 @@ figures = [
         'key': 'bio_focus',
         'y_axis_label': 'Biological focus',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -293,7 +293,7 @@ figures = [
         'key': 'model_size',
         'y_axis_label': 'Model size',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -302,7 +302,7 @@ figures = [
         'key': 'data_types',
         'y_axis_label': 'Data type',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -311,7 +311,7 @@ figures = [
         'key': 'data_sources',
         'y_axis_label': 'Data source',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -320,7 +320,7 @@ figures = [
         'key': 'formalisms',
         'y_axis_label': 'Mathematical formalism',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -329,7 +329,7 @@ figures = [
         'key': 'tools',
         'y_axis_label': 'Tool',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -338,7 +338,7 @@ figures = [
         'key': 'model_formats',
         'y_axis_label': 'Model format',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -347,7 +347,7 @@ figures = [
         'key': 'repositories',
         'y_axis_label': 'Resource',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -356,7 +356,7 @@ figures = [
         'key': 'programming_languages',
         'y_axis_label': 'Programming language',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -365,7 +365,7 @@ figures = [
         'key': 'other_tools',
         'y_axis_label': 'Tool',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -374,7 +374,7 @@ figures = [
         'key': 'bottlenecks',
         'y_axis_label': 'Bottleneck',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -383,7 +383,7 @@ figures = [
         'key': 'key_bottlenecks',
         'y_axis_label': 'Bottleneck',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -392,7 +392,7 @@ figures = [
         'key': 'key_problems',
         'y_axis_label': 'Problem',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -401,7 +401,7 @@ figures = [
         'key': 'needed_resources',
         'y_axis_label': 'Resource',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -410,7 +410,7 @@ figures = [
         'key': 'needed_meetings',
         'y_axis_label': 'Meeting',
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
     {
         'data': 'responses',
@@ -419,13 +419,13 @@ figures = [
         'key': 'other_thoughts',
         'y_axis_label': 'Other thought',         
         'threshold_count': 3.,
-        'unknown': False,
+        'unknown': None,
     },
 ]
 
 for i_figure, figure in enumerate(figures):
     if figure['data'] == 'invitations':
-        groups = group_invitations(invitations, figure['key'])
+        groups = group_invitations(invitations, figure['key'], unknown=figure['unknown'])
         total = len(invitations)
         x_axis_label = 'Number of invited scientists'
         filename = '{} - Invitations by {}'.format(i_figure + 1, figure['y_axis_label'].lower())
@@ -439,6 +439,7 @@ for i_figure, figure in enumerate(figures):
     figure['filename'] = filename
     figure['caption'] = plot_histogram(groups, total, x_axis_label,
                                        figure['y_axis_label'], filename,
+                                       unknown=figure['unknown'],
                                        threshold_count=figure['threshold_count'])
 
 # print figures
