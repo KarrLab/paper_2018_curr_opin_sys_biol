@@ -21,7 +21,7 @@ EUROPE_PMC_ENDPOINT = 'http://www.ebi.ac.uk/europepmc/webservices/rest/search'
 PAGE_SIZE = 1000 # maximum is 1000
 MAX_PAGES = 25 #float('inf')
 
-with open('query.txt', 'r') as file:
+with open('europe_pmc_query.txt', 'r') as file:
     query = file.read()
 
 class HashableDict(dict):

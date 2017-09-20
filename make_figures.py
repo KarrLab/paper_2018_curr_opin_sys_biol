@@ -178,7 +178,7 @@ def plot_histogram(groups, total, x_label, y_label, filename, threshold_count=1.
         caption = ''
 
     # plot data    
-    h_bar = 0.15
+    h_bar = 0.12
     h_axis = 0.35
     h_fig = (len(labels) + 0.1) * h_bar + h_axis
 
