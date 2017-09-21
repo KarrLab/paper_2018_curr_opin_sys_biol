@@ -316,7 +316,7 @@ figures = [
     {
         'data': 'responses',
         'title': 'If you use models in your research, which mathematical representations and simulation algorithms do you use most frequently?',
-        'short_title': 'Which mathematical representations do you use most frequently?',
+        'short_title': 'Which mathematical representations do you use?',
         'key': 'formalisms',
         'y_axis_label': 'Mathematical formalism',
         'threshold_count': 3.,
@@ -325,7 +325,7 @@ figures = [
     {
         'data': 'responses',
         'title': 'If you use models in your research, which tools do you most frequently use to build and/or simulate models?',
-        'short_title': 'Which tools do you most frequently use to build and/or simulate models?',
+        'short_title': 'Which tools do you use to build and/or simulate models?',
         'key': 'tools',
         'y_axis_label': 'Tool',
         'threshold_count': 3.,
@@ -334,7 +334,7 @@ figures = [
     {
         'data': 'responses',
         'title': 'If you use models in your research, which languages do you most frequently use to represent models?',
-        'short_title': 'Which languages do you most frequently use to represent models?',
+        'short_title': 'Which languages do you use to represent models?',
         'key': 'model_formats',
         'y_axis_label': 'Model format',
         'threshold_count': 3.,
@@ -343,7 +343,7 @@ figures = [
     {
         'data': 'responses',
         'title': 'If you use models in your research, which resources do you most frequently use to distribute models?',
-        'short_title': 'Which resources do you most frequently use to distribute models?',
+        'short_title': 'Which resources do you use to distribute models?',
         'key': 'repositories',
         'y_axis_label': 'Resource',
         'threshold_count': 3.,
@@ -379,7 +379,7 @@ figures = [
     {
         'data': 'responses',
         'title': 'What do think are the main bottlenecks to building more predictive models?',
-        'short_title': 'What do think are the main bottlenecks to building more predictive models?',
+        'short_title': 'What do think are the main bottlenecks to building better models?',
         'key': 'key_bottlenecks',
         'y_axis_label': 'Bottleneck',
         'threshold_count': 3.,
