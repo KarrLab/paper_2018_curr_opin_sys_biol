@@ -18,7 +18,7 @@ import pyexcel_xlsx
 invitations_filename = os.path.join(os.path.dirname(__file__), 'survey_invitations.xlsx')
 # path to Excel workbook with survey invitation list
 
-responses_filename = os.path.join(os.path.dirname(__file__), 'survey_responses.xlsx')
+responses_filename = os.path.join(os.path.dirname(__file__), 'survey_responses-edited.xlsx')
 # path to Excel workbook with survey responses
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), 'figures')
@@ -75,31 +75,28 @@ def parse_list(row, col):
 
 rows = pyexcel_xlsx.get_data(responses_filename)['Responses']
 responses = []
-for row in rows[2:]:
-    if row[25] == 'Y':
-        continue
-
+for row in rows[1:]:
     response = {
-        'sectors': parse_list(row, 26),
-        'fields': parse_list(row, 27),
-        'countries': parse_list(row, 28),
-        'focus': parse_list(row, 29),
-        'bio_focus': parse_list(row, 30),
-        'model_size': parse_list(row, 31),
-        'data_types': parse_list(row, 32),
-        'data_sources': parse_list(row, 33),
-        'formalisms': parse_list(row, 34),
-        'tools': parse_list(row, 35),
-        'model_formats': parse_list(row, 36),
-        'repositories': parse_list(row, 37),
-        'programming_languages': parse_list(row, 38),
-        'other_tools': parse_list(row, 39),
-        'bottlenecks': parse_list(row, 40),
-        'key_bottlenecks': parse_list(row, 41),
-        'key_problems': parse_list(row, 42),
-        'needed_resources': parse_list(row, 43),
-        'needed_meetings': parse_list(row, 44),
-        'other_thoughts': parse_list(row, 45),
+        'sectors': parse_list(row, 1),
+        'fields': parse_list(row, 2),
+        'countries': parse_list(row, 3),
+        'focus': parse_list(row, 4),
+        'bio_focus': parse_list(row, 5),
+        'model_size': parse_list(row, 6),
+        'data_types': parse_list(row, 7),
+        'data_sources': parse_list(row, 8),
+        'formalisms': parse_list(row, 9),
+        'tools': parse_list(row, 10),
+        'model_formats': parse_list(row, 11),
+        'repositories': parse_list(row, 12),
+        'programming_languages': parse_list(row, 13),
+        'other_tools': parse_list(row, 14),
+        'bottlenecks': parse_list(row, 15),
+        'key_bottlenecks': parse_list(row, 16),
+        'key_problems': parse_list(row, 17),
+        'needed_resources': parse_list(row, 18),
+        'needed_meetings': parse_list(row, 19),
+        'other_thoughts': parse_list(row, 20),
     }
     responses.append(response)
 
