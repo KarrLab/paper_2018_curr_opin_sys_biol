@@ -1,15 +1,17 @@
-# Code for the Karr Lab's 2018 review in *Current Opinion in Systems Biology*
-This repository provides the code for the Karr Lab's 2018 whole-cell modeling review in *Current Opinion in Systems Biology*.
+# Code for "A blueprint for human whole-cell modeling"
+
+This repository provides the code for "A blueprint for human whole-cell modeling" by Szigeti et al.
 
 The code performs the following functions:
 
 * Generates part of the email list used for the biomodeling community survey reported in the paper
-  * Uses the `Europe PMC webservice <https://europepmc.org/RestfulWebService#search>`_ to find articles about biomodeling
+  * Uses the [Europe PMC webservice](https://europepmc.org/RestfulWebService#search) to find articles about biomodeling
   * Extracts the author emails and ORCIDs and citation counts from the returned results
   * Groups the articles by author (common email and/or ORCID)
   * Counts the number of articles and sums the citations for each author
   * Saves the results to a TSV file
-* Generates the supplementary figures
+* Analyzes the invited investigators and the survey responses
+  * Generates several supplementary figures
 
 ## How to install this code
 1. Install Python and pip
@@ -27,10 +29,10 @@ python get_author_emails.py
 python make_figures.py
 ```
 
-The code will save the results to `investigators.tsv` and `figures/`.
+The first script generates part of the list of investigators that we invited to participate in the survey and saves this list to `investigators.tsv`. The second script analyzes the survey invitations in `survey_invitations.xlsx` and survey responses in `survey_responses-edited.xlsx` and saves several figures to `figures/`.
 
 ## How to cite this code
-Check back in 2018
+Szigeti B, Roth YD, Sekar JAP, Goldberg AP, Pochiraju SC & Karr JR†. A blueprint for human whole-cell modeling. Curr Opin Syst Biol 7, 8–15 (2017). doi: [10.1016/j.coisb.2017.10.005](https://doi.org/10.1016/j.coisb.2017.10.005)
 
 ## License
 The code is released under the [MIT license](LICENSE).
