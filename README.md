@@ -32,7 +32,7 @@ python make_figures.py
 The first script generates part of the list of investigators that we invited to participate in the survey and saves this list to `investigators.tsv`. The second script analyzes the survey invitations in `survey_invitations.xlsx` and survey responses in `survey_responses-edited.xlsx` and saves several figures to `figures/`.
 
 ## How to cite this code
-Szigeti B, Roth YD, Sekar JAP, Goldberg AP, Pochiraju SC & Karr JR†. A blueprint for human whole-cell modeling. Curr Opin Syst Biol 7, 8–15 (2017). doi: [10.1016/j.coisb.2017.10.005](https://doi.org/10.1016/j.coisb.2017.10.005)
+Szigeti B, Roth YD, Sekar JAP, Goldberg AP, Pochiraju SC & Karr JR†. A blueprint for human whole-cell modeling. Curr Opin Syst Biol 7, 8–15 (2018). doi: [10.1016/j.coisb.2017.10.005](https://doi.org/10.1016/j.coisb.2017.10.005)
 
 ## License
 The code is released under the [MIT license](LICENSE).
