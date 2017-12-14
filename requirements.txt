@@ -2,5 +2,5 @@ matplotlib
 natsort
 numpy
 pyexcel
-pyexcel-xlsx
+pyexcel_xlsx
 requests
